@@ -18,3 +18,19 @@ type Order struct {
 }
 
 var db *gorm.DB = database.New()
+
+func GetAllData() *[]Order {
+	var orders []Order
+	db.Preload("Items").Find(&orders)
+	return &orders
+}
+
+func GetSingleData(id uint) *Order {
+	var order Order
+	db.Preload("Items").Find(&order, "id = ?", id)
+	return &order
+}
+
+func InsertData(newOrder *Order) {
+	db.Create(newOrder)
+}

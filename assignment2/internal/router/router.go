@@ -1,18 +1,25 @@
 package router
 
 import (
-	"net/http"
+	"rest_api_order/internal/controllers"
 
 	"github.com/gin-gonic/gin"
 )
 
-var Router *gin.Engine
+type Router struct {
+	router *gin.Engine
+}
 
-func init() {
-	Router = gin.Default()
-	Router.GET("/", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"HELLO": "HELLO",
-		})
-	})
+func New() *Router {
+	router := Router{router: gin.Default()}
+	r := router.router
+	r.GET("/orders", controllers.GetAllData)
+	r.GET("/orders/:id", controllers.GetSingleData)
+	r.POST("/orders/", controllers.InsertData)
+
+	return &router
+}
+
+func (r *Router) StartServer() {
+	r.router.Run()
 }

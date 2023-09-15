@@ -5,5 +5,6 @@ import (
 )
 
 func main() {
-	router.Router.Run()
+	var router *router.Router = router.New()
+	router.StartServer()
 }
