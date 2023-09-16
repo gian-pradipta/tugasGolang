@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"rest_api_order/internal/repository/models/order"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,7 +33,6 @@ func GetSingleData(ctx *gin.Context) {
 func InsertData(c *gin.Context) {
 	var newOrder order.Order
 	err := c.ShouldBindJSON(&newOrder)
-	newOrder.OrderedAt = time.Now()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -63,11 +64,24 @@ func UpdateAnEntireOrder(c *gin.Context) {
 	id, err = strconv.Atoi(idString)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
+		return
 	}
-	var newOrder order.Order
-	err = c.ShouldBindJSON(&newOrder)
+
+	jsonByte, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	var validationMap map[string]interface{}
+	var newOrder order.Order
+	json.Unmarshal(jsonByte, &validationMap)
+	err = json.Unmarshal(jsonByte, &newOrder)
+	if !validateJSON(validationMap) {
+		c.AbortWithError(http.StatusBadRequest, errors.New("Bad Request"))
+		return
+	}
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 	err = order.UpdateAnEntireOrder(uint(id), &newOrder)
@@ -80,6 +94,34 @@ func UpdateAnEntireOrder(c *gin.Context) {
 
 }
 
-func UpdatePartOfOrder(id uint, order order.Order) {
+func UpdatePartOfOrder(c *gin.Context) {
+	var idString string = c.Param("id")
+	var id int
+	var err error
+	id, err = strconv.Atoi(idString)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	var newOrder order.Order
+	err = c.ShouldBindJSON(&newOrder)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	err = order.UpdateAnEntireOrder(uint(id), &newOrder)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+}
 
+func validateJSON(m map[string]interface{}) bool {
+	qualified := true
+	if len(m) != 3 {
+		qualified = false
+	}
+	return qualified
 }

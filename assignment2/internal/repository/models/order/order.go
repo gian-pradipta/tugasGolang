@@ -2,7 +2,6 @@ package order
 
 import (
 	"errors"
-	"fmt"
 	"rest_api_order/internal/repository/database"
 	"rest_api_order/internal/repository/models/item"
 	"time"
@@ -14,7 +13,7 @@ type Order struct {
 	ID           uint        `gorm:"primaryKey"`
 	CustomerName string      `json:"customer_name"`
 	Items        []item.Item `json:"items"`
-	OrderedAt    time.Time
+	OrderedAt    string      `json:"ordered_at"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
@@ -50,21 +49,29 @@ func DeleteData(id uint) error {
 }
 
 func UpdateAnEntireOrder(id uint, newOrder *Order) error {
+	return UpdatePartOfOrder(id, newOrder)
+
+}
+
+func UpdatePartOfOrder(id uint, newOrder *Order) error {
 	var err error
 	var order Order
-	fmt.Println(newOrder)
 	db.Find(&order, "id = ?", id)
 	if order.ID == 0 {
 		err = errors.New("Data not found")
 		return err
 	}
 	db.Model(&order).Updates(newOrder)
-	order.Items = newOrder.Items
+	if len(newOrder.Items) != 0 {
+		var deletedItems []item.Item
+		db.Where("order_id = ?", id).Find(&deletedItems)
+		for _, item := range deletedItems {
+			db.Delete(&item)
+		}
+
+		order.Items = newOrder.Items
+	}
+
 	db.Save(&order)
 	return err
-
-}
-
-func UpdatePartOfOrder(id uint, order *Order) {
-
 }

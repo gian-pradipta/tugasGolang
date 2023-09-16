@@ -16,7 +16,7 @@ func New() *Router {
 	r.GET("/orders", controllers.GetAllData)
 	r.GET("/orders/:id", controllers.GetSingleData)
 	r.POST("/orders/", controllers.InsertData)
-	r.PATCH("/orders/:id", controllers.UpdateAnEntireOrder)
+	r.PATCH("/orders/:id", controllers.UpdatePartOfOrder)
 	r.PUT("/orders/:id", controllers.UpdateAnEntireOrder)
 	r.DELETE("/orders/:id", controllers.DeleteData)
 
