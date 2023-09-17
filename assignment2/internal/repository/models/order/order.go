@@ -32,8 +32,9 @@ func GetSingleData(id uint) *Order {
 	return &order
 }
 
-func InsertData(newOrder *Order) {
+func InsertData(newOrder *Order) uint {
 	db.Create(newOrder)
+	return newOrder.ID
 }
 
 func DeleteData(id uint) error {
@@ -44,16 +45,11 @@ func DeleteData(id uint) error {
 		err = errors.New("Data Not Found")
 		return err
 	}
-	db.Delete(&Order{}, id)
+	db.Delete(order, id)
 	return err
 }
 
-func UpdateAnEntireOrder(id uint, newOrder *Order) error {
-	return UpdatePartOfOrder(id, newOrder)
-
-}
-
-func UpdatePartOfOrder(id uint, newOrder *Order) error {
+func UpdateOrder(id uint, newOrder *Order) error {
 	var err error
 	var order Order
 	db.Find(&order, "id = ?", id)

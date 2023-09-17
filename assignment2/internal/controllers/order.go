@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"rest_api_order/internal/repository/models/order"
@@ -37,7 +35,10 @@ func InsertData(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	order.InsertData(&newOrder)
+	latestId := order.InsertData(&newOrder)
+	c.JSON(http.StatusOK, gin.H{
+		"order": order.GetSingleData(latestId),
+	})
 
 }
 
@@ -49,79 +50,63 @@ func DeleteData(c *gin.Context) {
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 	}
+	deletedOrder := order.GetSingleData(uint(id))
 	err = order.DeleteData(uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": err.Error(),
 		})
+		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"order": deletedOrder,
+	})
 }
-
-func UpdateAnEntireOrder(c *gin.Context) {
-	var idString string = c.Param("id")
-	var id int
+func UpdatePATCHMethod(c *gin.Context) {
+	var notValidatedId string = c.Param("id")
+	var validatedParam uint
 	var err error
-	id, err = strconv.Atoi(idString)
-	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+	if validatedParam, err = validateParam(notValidatedId); err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-
-	jsonByte, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-	var validationMap map[string]interface{}
-	var newOrder order.Order
-	json.Unmarshal(jsonByte, &validationMap)
-	err = json.Unmarshal(jsonByte, &newOrder)
-	if !validateJSON(validationMap) {
-		c.AbortWithError(http.StatusBadRequest, errors.New("Bad Request"))
-		return
-	}
-	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-	err = order.UpdateAnEntireOrder(uint(id), &newOrder)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-}
-
-func UpdatePartOfOrder(c *gin.Context) {
-	var idString string = c.Param("id")
-	var id int
-	var err error
-	id, err = strconv.Atoi(idString)
-	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-	var newOrder order.Order
-	err = c.ShouldBindJSON(&newOrder)
-	if err != nil {
+	var jsonByte []byte
+	if jsonByte, err = io.ReadAll(c.Request.Body); err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	err = order.UpdateAnEntireOrder(uint(id), &newOrder)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
+	var newOrder *order.Order
+	if newOrder, err = contentValidation(jsonByte); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-}
-
-func validateJSON(m map[string]interface{}) bool {
-	qualified := true
-	if len(m) != 3 {
-		qualified = false
+	if err = order.UpdateOrder(validatedParam, newOrder); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
 	}
-	return qualified
+	GetSingleData(c)
+}
+func UpdatePUTMethod(c *gin.Context) {
+	var notValidatedId string = c.Param("id")
+	var err error
+	var validatedParam uint
+	if validatedParam, err = validateParam(notValidatedId); err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	var jsonByte []byte
+	if jsonByte, err = io.ReadAll(c.Request.Body); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	var newOrder *order.Order
+	if newOrder, err = validateLengthAndContent(jsonByte); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	if err = order.UpdateOrder(validatedParam, newOrder); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	GetSingleData(c)
 }
