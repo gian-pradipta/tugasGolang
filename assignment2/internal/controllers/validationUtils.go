@@ -48,7 +48,29 @@ func contentValidation(jsonByte []byte) (*order.Order, error) {
 	err = json.Unmarshal(jsonByte, &validationStruct)
 	return &validationStruct, err
 }
-func validateJSONFull(jsonByte []byte) (*order.Order, error) {
+
+func validateDuplicateItems(order *order.Order) error {
+	var err error
+	if order.Items == nil {
+		return err
+	}
+	var duplicationExistence bool = false
+	var itemCodes []string = make([]string, len(order.Items))
+	for _, item := range order.Items {
+		if !isInArray(item.Code, itemCodes) {
+			itemCodes = append(itemCodes, item.Code)
+		} else {
+			duplicationExistence = true
+			break
+		}
+	}
+	if duplicationExistence {
+		err = errors.New("Duplicate item codes detected")
+	}
+	return err
+}
+
+func validateJSONStrict(jsonByte []byte) (*order.Order, error) {
 	var err error
 	var newOrder *order.Order
 	err = isJSONComplete(jsonByte)

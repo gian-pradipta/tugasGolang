@@ -43,8 +43,12 @@ func CreateData(c *gin.Context) {
 	var err error
 	jsonByte, err = io.ReadAll(c.Request.Body)
 	var newOrder *order.Order
-	newOrder, err = validateJSONFull(jsonByte)
+	newOrder, err = validateJSONStrict(jsonByte)
 	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+	if err = validateDuplicateItems(newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
@@ -93,6 +97,12 @@ func UpdatePATCHMethod(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
+
+	if err = validateDuplicateItems(newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+
 	var updatedOrder *order.Order
 	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
@@ -120,10 +130,16 @@ func UpdatePUTMethod(c *gin.Context) {
 	}
 
 	var newOrder *order.Order
-	if newOrder, err = validateJSONFull(jsonByte); err != nil {
+	if newOrder, err = validateJSONStrict(jsonByte); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
+
+	if err = validateDuplicateItems(newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+
 	var updatedOrder *order.Order
 	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
