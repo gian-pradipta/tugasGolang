@@ -12,5 +12,6 @@ func New() *gorm.DB {
 	if err != nil {
 		panic("Failed to connect to the database")
 	}
+	db.Exec("PRAGMA foreign_keys = ON;")
 	return db
 }

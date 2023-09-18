@@ -4,58 +4,71 @@ import (
 	"io"
 	"net/http"
 	"rest_api_order/internal/repository/models/order"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetAllData(ctx *gin.Context) {
+func errToJSON(err error) gin.H {
+	return gin.H{
+		"error": err.Error(),
+	}
+}
+
+func ShowAllData(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"orders": order.GetAllData(),
 	})
 }
 
-func GetSingleData(ctx *gin.Context) {
-	var id string = ctx.Param("id")
+func ShowSingleData(ctx *gin.Context) {
+	var notValidatedId string = ctx.Param("id")
 	var err error
-	intId, err := strconv.Atoi(id)
+	validatedId, err := validateParam(notValidatedId)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+	jsonData, err := order.GetSingleData(validatedId)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, errToJSON(err))
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
-		"order": order.GetSingleData(uint(intId)),
+		"order": jsonData,
 	})
 }
 
-func InsertData(c *gin.Context) {
-	var newOrder order.Order
-	err := c.ShouldBindJSON(&newOrder)
+func CreateData(c *gin.Context) {
+	var jsonByte []byte
+	var err error
+	jsonByte, err = io.ReadAll(c.Request.Body)
+	var newOrder *order.Order
+	newOrder, err = validateJSONFull(jsonByte)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	latestId := order.InsertData(&newOrder)
+	latestId := order.InsertData(newOrder)
+	jsonData, _ := order.GetSingleData(latestId)
 	c.JSON(http.StatusOK, gin.H{
-		"order": order.GetSingleData(latestId),
+		"order": jsonData,
 	})
 
 }
 
 func DeleteData(c *gin.Context) {
-	var idString string = c.Param("id")
-	var id int
+	var notValidatedId string = c.Param("id")
+	var id uint
 	var err error
-	id, err = strconv.Atoi(idString)
+	id, err = validateParam(notValidatedId)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithStatusJSON(http.StatusNotFound, errToJSON(err))
+		return
 	}
-	deletedOrder := order.GetSingleData(uint(id))
-	err = order.DeleteData(uint(id))
+	deletedOrder, err := order.DeleteData(uint(id))
+
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusNotFound, errToJSON(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -67,46 +80,56 @@ func UpdatePATCHMethod(c *gin.Context) {
 	var validatedParam uint
 	var err error
 	if validatedParam, err = validateParam(notValidatedId); err != nil {
-		c.AbortWithStatus(http.StatusNotFound)
+		c.AbortWithStatusJSON(http.StatusNotFound, errToJSON(err))
 		return
 	}
 	var jsonByte []byte
 	if jsonByte, err = io.ReadAll(c.Request.Body); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
 	var newOrder *order.Order
 	if newOrder, err = contentValidation(jsonByte); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	if err = order.UpdateOrder(validatedParam, newOrder); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+	var updatedOrder *order.Order
+	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	GetSingleData(c)
+	c.JSON(http.StatusOK, gin.H{
+		"orders": updatedOrder,
+	})
+
 }
 func UpdatePUTMethod(c *gin.Context) {
 	var notValidatedId string = c.Param("id")
 	var err error
+
 	var validatedParam uint
 	if validatedParam, err = validateParam(notValidatedId); err != nil {
-		c.AbortWithStatus(http.StatusNotFound)
+		c.AbortWithStatusJSON(http.StatusNotFound, errToJSON(err))
 		return
 	}
+
 	var jsonByte []byte
 	if jsonByte, err = io.ReadAll(c.Request.Body); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
+
 	var newOrder *order.Order
-	if newOrder, err = validateLengthAndContent(jsonByte); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+	if newOrder, err = validateJSONFull(jsonByte); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	if err = order.UpdateOrder(validatedParam, newOrder); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+	var updatedOrder *order.Order
+	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	GetSingleData(c)
+	c.JSON(http.StatusOK, gin.H{
+		"order": updatedOrder,
+	})
 }

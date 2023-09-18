@@ -20,16 +20,32 @@ type Order struct {
 
 var db *gorm.DB = database.New()
 
+func isOrderExist(id uint) (*Order, error) {
+	var order Order
+	var err error
+	db.Preload("Items").Find(&order, "id = ?", id)
+	if order.ID == 0 {
+		err = errors.New("Data Not Found")
+		return &order, err
+	}
+	return &order, err
+}
+
 func GetAllData() *[]Order {
 	var orders []Order
 	db.Preload("Items").Find(&orders)
 	return &orders
 }
 
-func GetSingleData(id uint) *Order {
-	var order Order
+func GetSingleData(id uint) (*Order, error) {
+	var order *Order
+	var err error
+	order, err = isOrderExist(id)
+	if err != nil {
+		return order, err
+	}
 	db.Preload("Items").Find(&order, "id = ?", id)
-	return &order
+	return order, err
 }
 
 func InsertData(newOrder *Order) uint {
@@ -37,25 +53,25 @@ func InsertData(newOrder *Order) uint {
 	return newOrder.ID
 }
 
-func DeleteData(id uint) error {
-	var order Order
+func DeleteData(id uint) (*Order, error) {
+	var order *Order
 	var err error
-	db.Find(&order, "id = ?", id)
-	if order.ID == 0 {
-		err = errors.New("Data Not Found")
-		return err
+	order, err = isOrderExist(id)
+
+	var deletedOrder Order = *order
+	if err != nil {
+		return order, err
 	}
 	db.Delete(order, id)
-	return err
+	return &deletedOrder, err
 }
 
-func UpdateOrder(id uint, newOrder *Order) error {
+func UpdateOrder(id uint, newOrder *Order) (*Order, error) {
 	var err error
-	var order Order
-	db.Find(&order, "id = ?", id)
-	if order.ID == 0 {
-		err = errors.New("Data not found")
-		return err
+	var order *Order
+	order, err = isOrderExist(id)
+	if err != nil {
+		return order, err
 	}
 	db.Model(&order).Updates(newOrder)
 	if len(newOrder.Items) != 0 {
@@ -69,5 +85,5 @@ func UpdateOrder(id uint, newOrder *Order) error {
 	}
 
 	db.Save(&order)
-	return err
+	return order, err
 }

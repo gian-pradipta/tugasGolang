@@ -9,7 +9,7 @@ import (
 
 type Item struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
-	Code        string `json:"code"`
+	Code        string `gorm:"unique" json:"code"`
 	Description string `json:"description"`
 	Quantity    uint   `json:"quantity"`
 	OrderID     uint   `json:"order_id"`
