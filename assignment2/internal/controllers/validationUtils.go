@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"rest_api_order/internal/repository/models/item"
 	"rest_api_order/internal/repository/models/order"
 	"strconv"
 )
@@ -20,7 +21,7 @@ func isJSONComplete(jsonByte []byte) error {
 	var err error
 	err = json.Unmarshal(jsonByte, &validationMap)
 	if len(validationMap) != requiredLen {
-		err = errors.New("Invalid JSON request")
+		err = errors.New("incomplete JSON: JSON requires customer_name, items, and ordered_at")
 	}
 	return err
 }
@@ -49,7 +50,7 @@ func contentValidation(jsonByte []byte) (*order.Order, error) {
 	return &validationStruct, err
 }
 
-func validateDuplicateItems(order *order.Order) error {
+func doDuplicateItemsExistInJSON(order *order.Order) error {
 	var err error
 	if order.Items == nil {
 		return err
@@ -66,6 +67,14 @@ func validateDuplicateItems(order *order.Order) error {
 	}
 	if duplicationExistence {
 		err = errors.New("Duplicate item codes detected")
+	}
+	return err
+}
+
+func DoesDuplicateExistInDB(order *order.Order) error {
+	var err error
+	if item.DoDuplicatesExist(order.Items) {
+		err = errors.New("code id is a duplicate")
 	}
 	return err
 }

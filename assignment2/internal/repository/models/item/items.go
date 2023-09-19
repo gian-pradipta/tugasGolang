@@ -18,3 +18,20 @@ type Item struct {
 }
 
 var db *gorm.DB = database.New()
+
+func DoesDuplicateExist(item Item) bool {
+	var tempItem Item
+	db.Find(&tempItem, "code = ?", item.Code)
+	if tempItem.ID == 0 {
+		return false
+	}
+	return true
+}
+
+func DoDuplicatesExist(items []Item) bool {
+	var result bool = false
+	for _, item := range items {
+		result = result || DoesDuplicateExist(item)
+	}
+	return result
+}

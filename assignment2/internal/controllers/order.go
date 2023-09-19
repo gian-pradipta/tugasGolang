@@ -42,16 +42,23 @@ func CreateData(c *gin.Context) {
 	var jsonByte []byte
 	var err error
 	jsonByte, err = io.ReadAll(c.Request.Body)
+
 	var newOrder *order.Order
-	newOrder, err = validateJSONStrict(jsonByte)
-	if err != nil {
+	if newOrder, err = validateJSONStrict(jsonByte); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	if err = validateDuplicateItems(newOrder); err != nil {
+
+	if err = doDuplicateItemsExistInJSON(newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
+
+	if err = DoesDuplicateExistInDB(newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+
 	latestId := order.InsertData(newOrder)
 	jsonData, _ := order.GetSingleData(latestId)
 	c.JSON(http.StatusOK, gin.H{
@@ -64,8 +71,8 @@ func DeleteData(c *gin.Context) {
 	var notValidatedId string = c.Param("id")
 	var id uint
 	var err error
-	id, err = validateParam(notValidatedId)
-	if err != nil {
+
+	if id, err = validateParam(notValidatedId); err != nil {
 		c.AbortWithStatusJSON(http.StatusNotFound, errToJSON(err))
 		return
 	}
@@ -98,7 +105,11 @@ func UpdatePATCHMethod(c *gin.Context) {
 		return
 	}
 
-	if err = validateDuplicateItems(newOrder); err != nil {
+	if err = doDuplicateItemsExistInJSON(newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+	if err = DoesDuplicateExistInDB(newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
@@ -135,7 +146,11 @@ func UpdatePUTMethod(c *gin.Context) {
 		return
 	}
 
-	if err = validateDuplicateItems(newOrder); err != nil {
+	if err = doDuplicateItemsExistInJSON(newOrder); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+	if err = DoesDuplicateExistInDB(newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
