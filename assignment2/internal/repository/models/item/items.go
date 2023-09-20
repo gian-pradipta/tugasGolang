@@ -1,6 +1,7 @@
 package item
 
 import (
+	"errors"
 	"rest_api_order/internal/repository/database"
 	"time"
 
@@ -34,4 +35,22 @@ func DoDuplicatesExist(items []Item) bool {
 		result = result || DoesDuplicateExist(item)
 	}
 	return result
+}
+
+func UpdateItemOnCode(newItem *Item) error {
+	var updatedItem Item
+	db.First(&updatedItem, "code = ?", newItem.Code)
+	if updatedItem.ID == 0 {
+		return errors.New("No item with that code")
+	}
+	updatedItem.Quantity = newItem.Quantity
+	updatedItem.Description = newItem.Description
+	db.Save(&updatedItem)
+	return nil
+}
+
+func InsertData(id uint, newItem *Item) uint {
+	newItem.OrderID = id
+	db.Create(newItem)
+	return newItem.ID
 }

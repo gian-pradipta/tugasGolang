@@ -38,6 +38,28 @@ func (v *ItemValidator) isJSONComplete(jsonByte []byte) error {
 	}
 	return err
 }
+
+func (v *ItemValidator) IsJSONComplete(jsonByte []byte) (*[]item.Item, error) {
+	var err error
+	var validationStructs []item.Item
+
+	err = json.Unmarshal(jsonByte, &validationStructs)
+	if err != nil {
+		return nil, err
+	}
+	var valid bool = true
+	for _, validationStruct := range validationStructs {
+		valid = valid && !(validationStruct.Code == "")
+		valid = valid && !(validationStruct.Description == "")
+		valid = valid && !(validationStruct.Quantity == 0)
+	}
+
+	if !valid {
+		err = errors.New("Incomplete JSON for items")
+		return nil, err
+	}
+	return &validationStructs, err
+}
 func (v *ItemValidator) ContentValidation(jsonByte []byte) (*item.Item, error) {
 	var validationStruct item.Item
 	var validationMap map[string]interface{}

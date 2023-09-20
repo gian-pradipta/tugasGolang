@@ -2,6 +2,7 @@ package order
 
 import (
 	"errors"
+	"fmt"
 	"rest_api_order/internal/repository/database"
 	"rest_api_order/internal/repository/models/item"
 	"time"
@@ -73,17 +74,16 @@ func UpdateOrder(id uint, newOrder *Order) (*Order, error) {
 	if err != nil {
 		return order, err
 	}
-	db.Model(&order).Updates(newOrder)
-	if len(newOrder.Items) != 0 {
-		var deletedItems []item.Item
-		db.Where("order_id = ?", id).Find(&deletedItems)
-		for _, item := range deletedItems {
-			db.Delete(&item)
-		}
 
-		order.Items = newOrder.Items
+	order.CustomerName = newOrder.CustomerName
+	order.OrderedAt = newOrder.OrderedAt
+	for _, singleItem := range newOrder.Items {
+		if err = item.UpdateItemOnCode(&singleItem); err != nil {
+			fmt.Println(item.InsertData(order.ID, &singleItem))
+		}
 	}
 
-	db.Save(&order)
-	return order, err
+	db.Save(order)
+	newOrder, err = isOrderExist(order.ID)
+	return newOrder, err
 }

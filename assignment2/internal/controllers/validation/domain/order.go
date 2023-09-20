@@ -36,45 +36,22 @@ func (v *OrderValidator) ContentValidation(jsonByte []byte) (*order.Order, error
 	return &validationStruct, err
 }
 
-// func (v *OrderValidator) DoDuplicateItemsExistInJSON(order *order.Order) error {
-// 	var err error
-// 	if order.Items == nil {
-// 		return err
-// 	}
-// 	var duplicationExistence bool = false
-// 	var itemCodes []string = make([]string, len(order.Items))
-// 	for _, item := range order.Items {
-// 		if !isInArray(item.Code, itemCodes) {
-// 			itemCodes = append(itemCodes, item.Code)
-// 		} else {
-// 			duplicationExistence = true
-// 			break
-// 		}
-// 	}
-// 	if duplicationExistence {
-// 		err = errors.New("Duplicate item codes detected")
-// 	}
-// 	return err
-// }
-
-// func (v *OrderValidator) DoesDuplicateExistInDB(order *order.Order) error {
-// 	var err error
-// 	if item.DoDuplicatesExist(order.Items) {
-// 		err = errors.New("code id is a duplicate")
-// 	}
-// 	return err
-// }
-
-func (v *OrderValidator) ValidateJSONStrict(jsonByte []byte) (*order.Order, error) {
-	var err error
-	var newOrder *order.Order
-	err = v.isJSONComplete(jsonByte)
+func (v *OrderValidator) IsJSONComplete(jsonByte []byte) (*order.Order, error) {
+	var validationStruct order.Order
+	err := json.Unmarshal(jsonByte, &validationStruct)
 	if err != nil {
-		return newOrder, err
+		return nil, err
 	}
-	newOrder, err = v.ContentValidation(jsonByte)
-	if err != nil {
-		return newOrder, err
+
+	var result bool = true
+
+	result = result && !(validationStruct.CustomerName == "")
+	result = result && !(validationStruct.OrderedAt == "")
+	result = result && !(validationStruct.Items == nil)
+	if !result {
+		err = errors.New("Incomplete JSON detected")
+		return nil, err
 	}
-	return newOrder, err
+	return &validationStruct, err
+
 }

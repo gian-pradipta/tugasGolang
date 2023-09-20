@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"rest_api_order/internal/controllers/validation/domain"
@@ -51,12 +52,17 @@ func CreateData(c *gin.Context) {
 	defer c.Request.Body.Close()
 
 	var newOrder *order.Order
-	if newOrder, err = OrderValidator.ValidateJSONStrict(jsonByte); err != nil {
+	if newOrder, err = OrderValidator.IsJSONComplete(jsonByte); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
 
-	if _, err = ItemValidator.ValidateJSONStrict(jsonByte); err != nil {
+	jsonByteItems, err := json.Marshal(newOrder.Items)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+	if _, err = ItemValidator.IsJSONComplete(jsonByteItems); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
@@ -140,40 +146,42 @@ func UpdatePATCHMethod(c *gin.Context) {
 func UpdatePUTMethod(c *gin.Context) {
 	var notValidatedId string = c.Param("id")
 	var err error
-
+	//id param validation
 	var validatedParam uint
 	if validatedParam, err = general.ValidateParam(notValidatedId); err != nil {
 		c.AbortWithStatusJSON(http.StatusNotFound, errToJSON(err))
 		return
 	}
-
+	//read the request body
 	var jsonByte []byte
 	if jsonByte, err = io.ReadAll(c.Request.Body); err != nil {
 		defer c.Request.Body.Close()
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-
+	//validating if JSON for order is structurally complete
 	var newOrder *order.Order
-	if newOrder, err = OrderValidator.ValidateJSONStrict(jsonByte); err != nil {
+	if newOrder, err = OrderValidator.IsJSONComplete(jsonByte); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-
-	if _, err = ItemValidator.ValidateJSONStrict(jsonByte); err != nil {
+	//validating if JSON for items is structurally complete
+	jsonByteItems, _ := json.Marshal(newOrder.Items)
+	if _, err = ItemValidator.IsJSONComplete(jsonByteItems); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-
+	//looking for duplicates in JSON request validation
 	if err = ItemValidator.DoDuplicateItemsExistInJSON(newOrder.Items); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	if err = ItemValidator.DoesDuplicateExistInDB(newOrder.Items); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
-		return
-	}
-
+	// //looking for duplicates in database table validation
+	// if err = ItemValidator.DoesDuplicateExistInDB(newOrder.Items); err != nil {
+	// 	c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+	// 	return
+	// }
+	//the update action and give response to client
 	var updatedOrder *order.Order
 	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
