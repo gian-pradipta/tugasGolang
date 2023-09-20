@@ -49,8 +49,36 @@ func UpdateItemOnCode(newItem *Item) error {
 	return nil
 }
 
-func InsertData(id uint, newItem *Item) uint {
+func InsertData(id uint, newItem *Item) (uint, error) {
+	var err error
 	newItem.OrderID = id
+	if newItem.Description == "" || newItem.Quantity == 0 {
+		err = errors.New("Incomplete Data Item")
+		return newItem.ID, err
+	}
 	db.Create(newItem)
-	return newItem.ID
+	return newItem.ID, err
+}
+
+func CompleteItem(incompleteItem *Item, completeItem *Item) {
+
+	if incompleteItem.Description == "" {
+		incompleteItem.Description = completeItem.Description
+	}
+	if incompleteItem.Quantity == 0 {
+		incompleteItem.Quantity = completeItem.Quantity
+	}
+}
+
+func UpdateItemOnCodePartial(newItem *Item) error {
+	var updatedItem Item
+	db.First(&updatedItem, "code = ?", newItem.Code)
+	if updatedItem.ID == 0 {
+		return errors.New("No item with that code")
+	}
+	CompleteItem(newItem, &updatedItem)
+	updatedItem.Quantity = newItem.Quantity
+	updatedItem.Description = newItem.Description
+	db.Save(&updatedItem)
+	return nil
 }

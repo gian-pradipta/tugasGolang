@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"rest_api_order/internal/controllers/validation/domain"
 	"rest_api_order/internal/controllers/validation/general"
+	"rest_api_order/internal/repository/models/item"
 	"rest_api_order/internal/repository/models/order"
 
 	"github.com/gin-gonic/gin"
@@ -105,6 +106,7 @@ func DeleteData(c *gin.Context) {
 	})
 }
 func UpdatePATCHMethod(c *gin.Context) {
+
 	var notValidatedId string = c.Param("id")
 	var validatedParam uint
 	var err error
@@ -119,7 +121,19 @@ func UpdatePATCHMethod(c *gin.Context) {
 		return
 	}
 	var newOrder *order.Order
-	if newOrder, err = OrderValidator.ContentValidation(jsonByte); err != nil {
+	if newOrder, err = OrderValidator.IsJSONCompletePartial(jsonByte); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
+		return
+	}
+
+	var newOrderMap map[string]interface{}
+	json.Unmarshal(jsonByte, &newOrderMap)
+	// jsonByteItem, _ := json.Marshal(newOrder.Items)
+	if len(newOrder.Items) == 0 {
+		newOrderMap["items"] = make([]item.Item, 0)
+	}
+	jsonByteItem, _ := json.Marshal(newOrderMap["items"])
+	if err = ItemValidator.IsPartialJSONValid(jsonByteItem); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
@@ -128,13 +142,9 @@ func UpdatePATCHMethod(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	if err = ItemValidator.DoesDuplicateExistInDB(newOrder.Items); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
-		return
-	}
 
 	var updatedOrder *order.Order
-	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {
+	if updatedOrder, err = order.UpdateOrderPartial(validatedParam, newOrder); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
@@ -176,11 +186,6 @@ func UpdatePUTMethod(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
 		return
 	}
-	// //looking for duplicates in database table validation
-	// if err = ItemValidator.DoesDuplicateExistInDB(newOrder.Items); err != nil {
-	// 	c.AbortWithStatusJSON(http.StatusBadRequest, errToJSON(err))
-	// 	return
-	// }
 	//the update action and give response to client
 	var updatedOrder *order.Order
 	if updatedOrder, err = order.UpdateOrder(validatedParam, newOrder); err != nil {

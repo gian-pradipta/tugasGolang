@@ -3,6 +3,7 @@ package domain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"rest_api_order/internal/controllers/validation/general"
 	"rest_api_order/internal/repository/models/order"
 )
@@ -54,4 +55,26 @@ func (v *OrderValidator) IsJSONComplete(jsonByte []byte) (*order.Order, error) {
 	}
 	return &validationStruct, err
 
+}
+
+func (v *OrderValidator) IsJSONCompletePartial(jsonByte []byte) (*order.Order, error) {
+	var err error
+	var validationMap map[string]interface{}
+	var validationStruct order.Order
+	json.Unmarshal(jsonByte, &validationMap)
+	json.Unmarshal(jsonByte, &validationStruct)
+
+	var allowedParams []string = []string{"customer_name", "ordered_at", "items"}
+	var paramsAvailable []string = make([]string, len(allowedParams))
+
+	for key := range validationMap {
+		if !general.IsInArray(key, allowedParams) {
+			fmt.Println(key)
+			err = errors.New("Invalid param on JSON1")
+			return &validationStruct, err
+		}
+		paramsAvailable = append(paramsAvailable, key)
+	}
+
+	return &validationStruct, err
 }

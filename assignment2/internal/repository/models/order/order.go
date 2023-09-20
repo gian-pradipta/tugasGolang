@@ -2,7 +2,6 @@ package order
 
 import (
 	"errors"
-	"fmt"
 	"rest_api_order/internal/repository/database"
 	"rest_api_order/internal/repository/models/item"
 	"time"
@@ -79,11 +78,51 @@ func UpdateOrder(id uint, newOrder *Order) (*Order, error) {
 	order.OrderedAt = newOrder.OrderedAt
 	for _, singleItem := range newOrder.Items {
 		if err = item.UpdateItemOnCode(&singleItem); err != nil {
-			fmt.Println(item.InsertData(order.ID, &singleItem))
+			item.InsertData(order.ID, &singleItem)
 		}
 	}
 
 	db.Save(order)
 	newOrder, err = isOrderExist(order.ID)
 	return newOrder, err
+}
+
+func UpdateOrderPartial(id uint, newOrder *Order) (*Order, error) {
+	var err error
+	var order *Order
+	order, err = isOrderExist(id)
+	if err != nil {
+		return order, err
+	}
+	completedOrder := completeOrder(newOrder, order)
+
+	order.CustomerName = completedOrder.CustomerName
+	order.OrderedAt = completedOrder.OrderedAt
+	for _, singleItem := range newOrder.Items {
+		if err = item.UpdateItemOnCodePartial(&singleItem); err != nil {
+			_, err = item.InsertData(order.ID, &singleItem)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	db.Save(order)
+	newOrder, err = isOrderExist(order.ID)
+	return newOrder, err
+
+}
+
+func completeOrder(incompleteOrder *Order, completeOrder *Order) *Order {
+	if incompleteOrder.CustomerName == "" {
+		incompleteOrder.CustomerName = completeOrder.CustomerName
+	}
+
+	if incompleteOrder.Items == nil {
+		incompleteOrder.Items = completeOrder.Items
+	}
+
+	if incompleteOrder.OrderedAt == "" {
+		incompleteOrder.OrderedAt = completeOrder.OrderedAt
+	}
+	return incompleteOrder
 }
