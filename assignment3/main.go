@@ -1,7 +1,7 @@
 package main
 
 import (
-	requestapi "assignment_3/internal/requestAPI"
+	requestapi "assignment_3/internal/requestapi"
 	"assignment_3/internal/router"
 	"time"
 )
