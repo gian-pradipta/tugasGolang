@@ -10,11 +10,12 @@ func main() {
 	go func() {
 		time.Sleep(time.Second)
 		for {
-			time.Sleep(3 * time.Second)
+			time.Sleep(15 * time.Second)
 			requestapi.PUTRequest()
 		}
 
 	}()
+
 	router.Run()
 
 }
